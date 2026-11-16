@@ -1,0 +1,385 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>English Quest: The Road to Wordland</title>
+
+  <link rel="stylesheet" href="/static/style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+  <script src="/static/game.js" defer></script>
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="brand">⚔ ENGLISH QUEST</div>
+
+    <div id="hud" class="hud hidden">
+      <span>🧙 <b id="hud-name">Aventurero</b></span>
+      <span>❤️ <b id="hud-lives">5</b></span>
+      <span>⭐ <b id="hud-xp">0</b> XP</span>
+      <span>🪙 <b id="hud-coins">0</b></span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- MENÚ PRINCIPAL -->
+
+    <section id="title-screen" class="screen title-screen">
+
+      <img src="/static/inicio.jpg" alt="" class="title-background">
+
+      <div class="title-card">
+
+        <p class="eyebrow">A RETRO PIXEL RPG</p>
+
+        <h1>ENGLISH QUEST</h1>
+        <h2>The Road to Wordland</h2>
+
+        <p class="intro">
+          Una aventura para aprender inglés, explorar mundos y recuperar
+          los Fragmentos del Lenguaje.
+        </p>
+
+        <label for="player-name">Nombre de tu aventurero</label>
+
+        <input
+          id="player-name"
+          maxlength="18"
+          placeholder="Escribí tu nombre"
+        >
+
+        <button id="start-button" class="primary">
+          ▶ START GAME
+        </button>
+
+        <button id="continue-button">
+          CONTINUE ADVENTURE
+        </button>
+
+        <!-- BOTONES HOW TO PLAY Y CREDITS -->
+
+        <div class="image-guide">
+
+          <button
+            type="button"
+            class="guide-card"
+            onclick="document.getElementById('how-overlay').classList.remove('hidden')"
+          >
+            <img src="/static/how.jpg" alt="How to Play">
+            <span>HOW TO PLAY</span>
+          </button>
+
+          <button
+            type="button"
+            class="guide-card"
+            onclick="document.getElementById('credits-overlay').classList.remove('hidden')"
+          >
+            <img src="/static/credits.jpg" alt="Credits">
+            <span>CREDITS</span>
+          </button>
+
+        </div>
+
+        <p class="small">
+          WASD / Flechas: moverte · E: hablar · ESC: volver al mapa
+        </p>
+
+      </div>
+    </section>
+
+    <!-- MAPA DE MUNDOS -->
+
+    <section id="map-screen" class="screen hidden">
+
+      <div class="section-heading">
+
+        <div>
+          <p class="eyebrow">YOUR ADVENTURE</p>
+          <h2>El camino a Wordland</h2>
+          <p>Elegí un mundo desbloqueado para comenzar.</p>
+        </div>
+
+        <button id="map-back-button">MENÚ</button>
+
+      </div>
+
+      <div class="map-layout">
+
+        <div class="map-frame">
+          <canvas id="world-map" width="900" height="500"></canvas>
+        </div>
+
+        <aside class="panel">
+
+          <h3 id="world-title">Beginner Forest</h3>
+
+          <p id="world-difficulty">EASY</p>
+
+          <p id="world-description">
+            Aprendé tus primeras palabras.
+          </p>
+
+          <p id="world-status">Disponible</p>
+
+          <button id="select-world-button" class="primary">
+            ENTER WORLD
+          </button>
+
+          <p class="small">
+            Completá los desafíos para desbloquear el próximo mundo.
+          </p>
+
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- PANTALLA DEL JUEGO -->
+
+    <section id="game-screen" class="screen hidden">
+
+      <div class="game-heading">
+
+        <div>
+          <p class="eyebrow" id="room-difficulty">WORLD 1 · EASY</p>
+          <h2 id="room-title">Beginner Forest</h2>
+        </div>
+
+        <button id="return-map-button">← MAPA</button>
+
+      </div>
+
+      <div class="game-frame">
+        <canvas
+          id="game-canvas"
+          width="900"
+          height="520"
+          tabindex="0"
+        ></canvas>
+      </div>
+
+      <div class="game-help">
+        <span>⬆⬇⬅➡ / WASD: moverte</span>
+        <span>E: hablar con el NPC cercano</span>
+        <span>ESC: volver al mapa</span>
+      </div>
+
+      <p id="game-message" class="game-message">
+        ¡Explorá el mundo y acercate a los personajes!
+      </p>
+
+    </section>
+
+  </main>
+
+  <!-- DIÁLOGOS -->
+
+  <div id="dialog-overlay" class="overlay hidden">
+
+    <div class="dialog-box">
+
+      <p id="dialog-speaker" class="eyebrow">PERSONAJE</p>
+
+      <h2 id="dialog-title">¡Hola!</h2>
+
+      <p id="dialog-text"></p>
+
+      <div id="dialog-actions" class="actions"></div>
+
+      <button id="dialog-close-button">CERRAR</button>
+
+    </div>
+
+  </div>
+
+  <!-- PREGUNTAS Y DESAFÍOS -->
+
+  <div id="question-overlay" class="overlay hidden">
+
+    <div class="dialog-box question-box">
+
+      <p id="question-category" class="eyebrow">
+        ENGLISH CHALLENGE
+      </p>
+
+      <h2 id="question-title">Desafío</h2>
+
+      <p id="question-text"></p>
+
+      <div id="answer-options" class="answer-options"></div>
+
+      <div class="written-answer">
+
+        <label for="written-answer">
+          O escribí tu propia respuesta en inglés:
+        </label>
+
+        <input
+          id="written-answer"
+          placeholder="Write your answer here..."
+          autocomplete="off"
+        >
+
+        <div class="voice-controls">
+
+          <button type="button" id="voice-button">
+            🎤 RESPONDER CON VOZ
+          </button>
+
+          <span id="voice-status">
+            También podés hablar en inglés.
+          </span>
+
+        </div>
+
+        <button
+          type="button"
+          id="check-written-button"
+          class="primary"
+        >
+          COMPROBAR RESPUESTA
+        </button>
+
+      </div>
+
+      <p id="answer-feedback" aria-live="polite"></p>
+
+      <button id="next-question-button" class="primary hidden">
+        CONTINUAR
+      </button>
+
+      <button id="quit-question-button">
+        SALIR DEL DESAFÍO
+      </button>
+
+    </div>
+
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <!-- PANTALLA COMPLETA HOW TO PLAY -->
+
+  <div id="how-overlay" class="how-overlay hidden">
+
+    <img
+      src="/static/how.jpg"
+      alt=""
+      class="how-background"
+    >
+
+    <div class="how-content">
+
+      <p class="eyebrow">YOUR ADVENTURE BEGINS!</p>
+
+      <h1>HOW TO PLAY</h1>
+
+      <p>
+        ¡Preparate para vivir una gran aventura en Wordland!
+        En este juego vas a divertirte completando niveles,
+        superando obstáculos y poniendo a prueba tus conocimientos
+        de inglés para mejorar cada vez más y llegar a la meta.
+      </p>
+
+      <h2>🎮 TUS CONTROLES</h2>
+
+      <div class="control-item">
+        <span>⬆️ ⬇️ ⬅️ ➡️</span>
+        <p>
+          Usá las flechas del teclado para moverte por el mapa
+          y explorar cada mundo.
+        </p>
+      </div>
+
+      <div class="control-item">
+        <span>⌨️ E</span>
+        <p>
+          Acercate a los personajes y presioná E para interactuar con ellos.
+        </p>
+      </div>
+
+      <div class="control-item">
+        <span>⎋ ESC</span>
+        <p>
+          Volvé al mapa para elegir otro mundo y continuar tu aventura.
+        </p>
+      </div>
+
+      <p class="final-message">
+        ⭐ ¡Superá los desafíos, desbloqueá nuevos mundos y convertite
+        en el gran aventurero de Wordland!
+      </p>
+
+      <button
+        type="button"
+        class="primary back-button"
+        onclick="document.getElementById('how-overlay').classList.add('hidden')"
+      >
+        ← VOLVER AL INICIO
+      </button>
+
+    </div>
+  </div>
+
+  <!-- PANTALLA COMPLETA CREDITS -->
+
+  <div id="credits-overlay" class="how-overlay hidden">
+
+    <img
+      src="/static/credits.jpg"
+      alt=""
+      class="how-background"
+    >
+
+    <div class="how-content">
+
+      <p class="eyebrow">ENGLISH QUEST</p>
+
+      <h1>CREDITS</h1>
+
+      <p>
+        ¡Gracias por formar parte de esta aventura!
+      </p>
+
+      <h2>ABOUT THE GAME</h2>
+
+      <p>
+        English Quest: The Road to Wordland es un juego educativo
+        creado para aprender y practicar inglés de una manera
+        divertida, explorando mundos y superando desafíos.
+      </p>
+
+      <h2>OUR PURPOSE</h2>
+
+      <p>
+        Nuestro objetivo es combinar el aprendizaje del idioma
+        inglés con la diversión de los videojuegos.
+      </p>
+
+      <p class="final-message">
+        ⭐ ¡Gracias por jugar y ser parte de Wordland!
+      </p>
+
+      <button
+        type="button"
+        class="primary back-button"
+        onclick="document.getElementById('credits-overlay').classList.add('hidden')"
+      >
+        ← VOLVER AL INICIO
+      </button>
+
+    </div>
+  </div>
+
+  <footer>
+    ENGLISH QUEST · LEARN · EXPLORE · DISCOVER
+  </footer>
+
+</body>
+</html>
